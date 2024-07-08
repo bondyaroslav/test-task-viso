@@ -1,19 +1,28 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import firebase from "firebase/compat/app"
+import "firebase/compat/firestore"
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDwls1vON_HIaKb3CqEgA3DSyI-EZAYuUg",
+    authDomain: "test-task-viso-1dadb.firebaseapp.com",
+    projectId: "test-task-viso-1dadb",
+    storageBucket: "test-task-viso-1dadb.appspot.com",
+    messagingSenderId: "394668604502",
+    appId: "1:394668604502:web:4702d956649d2b4b5e0ff7",
+    measurementId: "G-RVR49E30MV"
+}
+
+firebase.initializeApp(firebaseConfig)
+export const db = firebase.firestore()
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+    document.getElementById('root') as HTMLElement
+)
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+root.render(
+    <React.StrictMode>
+        <App/>
+    </React.StrictMode>
+)
