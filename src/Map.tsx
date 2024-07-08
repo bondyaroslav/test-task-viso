@@ -113,7 +113,7 @@ const Map: React.FC = () => {
                                     key={index}
                                     position={{lat: marker.lat, lng: marker.lng}}
                                     label={(index + 1).toString()}
-                                    draggable={true} // Дозволяємо перетягування маркерів
+                                    draggable={true}
                                     onDragEnd={(e) => handleMarkerDrag(index, e.latLng ? e.latLng.toJSON() : null)}
                                 />
                             ))}
