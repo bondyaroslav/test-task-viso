@@ -1,7 +1,8 @@
-import React, {useCallback, useEffect, useState} from "react"
-import { GoogleMap, useLoadScript, Marker, MarkerClusterer } from "@react-google-maps/api"
+import React, {useCallback, useEffect, useRef, useState} from "react"
+import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api"
 import "firebase/firestore"
 import firebase from "firebase/compat/app"
+import { MarkerClusterer } from "@googlemaps/markerclusterer"
 
 const mapContainerStyle = {
     width: "100vw",
@@ -24,6 +25,8 @@ const Map: React.FC = () => {
     })
 
     const [markers, setMarkers] = useState<MarkerData[]>([])
+    const mapRef = useRef<google.maps.Map | null>(null)
+    const markerClustererRef = useRef<MarkerClusterer | null>(null)
 
     const loadMarkers = async () => {
         const querySnapshot = await firebase.firestore().collection("quests").get()
@@ -91,6 +94,29 @@ const Map: React.FC = () => {
         loadMarkers()
     }, [])
 
+    useEffect(() => {
+        if (isLoaded && mapRef.current) {
+            const map = mapRef.current
+
+            if (markerClustererRef.current) {
+                markerClustererRef.current.clearMarkers()
+            }
+
+            markerClustererRef.current = new MarkerClusterer({ map, markers: [] })
+            markers.forEach(marker => {
+                const gMarker = new google.maps.Marker({
+                    position: { lat: marker.lat, lng: marker.lng },
+                    label: (markers.indexOf(marker) + 1).toString(),
+                    draggable: true
+                })
+                gMarker.addListener('dragend', (e: google.maps.MapMouseEvent) => {
+                    handleMarkerDrag(markers.indexOf(marker), e.latLng?.toJSON() || null)
+                })
+                markerClustererRef.current?.addMarker(gMarker)
+            })
+        }
+    }, [isLoaded, markers])
+
     if (loadError) return <div>Error loading maps</div>
     if (!isLoaded) return <div>Loading Maps</div>
 
@@ -104,23 +130,10 @@ const Map: React.FC = () => {
                 zoom={8}
                 center={center}
                 onClick={onMapClick}
-            >
-                <MarkerClusterer options={{ imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m' }}>
-                    {(clusterer) => (
-                        <>
-                            {markers.map((marker, index) => (
-                                <Marker
-                                    key={index}
-                                    position={{lat: marker.lat, lng: marker.lng}}
-                                    label={(index + 1).toString()}
-                                    draggable={true}
-                                    onDragEnd={(e) => handleMarkerDrag(index, e.latLng ? e.latLng.toJSON() : null)}
-                                />
-                            ))}
-                        </>
-                    )}
-                </MarkerClusterer>
-            </GoogleMap>
+                onLoad={map => {
+                    mapRef.current = map
+                }}
+            />
         </div>
     )
 }
