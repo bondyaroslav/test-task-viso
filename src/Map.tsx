@@ -15,7 +15,7 @@ const center = {
 interface MarkerData {
     lat: number
     lng: number
-    time: Date
+    time: number
 }
 
 const Map: React.FC = () => {
@@ -41,7 +41,7 @@ const Map: React.FC = () => {
         const newMarker: MarkerData = {
             lat: event.latLng.lat(),
             lng: event.latLng.lng(),
-            time: new Date()
+            time: new Date().getTime()
         }
         addMarker(newMarker)
         setMarkers((current) => [...current, newMarker])
@@ -64,6 +64,26 @@ const Map: React.FC = () => {
             setMarkers([])
         } catch (e) {
             console.error("Error deleting all documents: ", e)
+        }
+    }
+
+    const handleMarkerDrag = async (index: number, newPosition: google.maps.LatLngLiteral | null) => {
+        if (!newPosition) return
+        const updatedMarkers = [...markers]
+        updatedMarkers[index] = {
+            ...updatedMarkers[index],
+            lat: newPosition.lat,
+            lng: newPosition.lng
+        }
+        setMarkers(updatedMarkers)
+
+        try {
+            await firebase.firestore().collection("quests").doc(updatedMarkers[index].time.toString()).update({
+                lat: newPosition.lat,
+                lng: newPosition.lng
+            })
+        } catch (e) {
+            console.error("Error updating marker position: ", e)
         }
     }
 
@@ -93,7 +113,8 @@ const Map: React.FC = () => {
                                     key={index}
                                     position={{lat: marker.lat, lng: marker.lng}}
                                     label={(index + 1).toString()}
-                                    // clusterer={clusterer}
+                                    draggable={true} // Дозволяємо перетягування маркерів
+                                    onDragEnd={(e) => handleMarkerDrag(index, e.latLng ? e.latLng.toJSON() : null)}
                                 />
                             ))}
                         </>
