@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from "react";
+import React, {useCallback, useEffect, useState} from "react"
 import { GoogleMap, useLoadScript, Marker, MarkerClusterer } from "@react-google-maps/api"
 import "firebase/firestore"
 import firebase from "firebase/compat/app"
@@ -23,7 +23,7 @@ const Map: React.FC = () => {
         googleMapsApiKey: "AIzaSyB6G2zZnAoeL-DOW4WcVIyslHWi2iYzjfY"
     })
 
-    const [markers, setMarkers] = useState<MarkerData[]>([]);
+    const [markers, setMarkers] = useState<MarkerData[]>([])
 
     const loadMarkers = async () => {
         const querySnapshot = await firebase.firestore().collection("quests").get()
@@ -31,10 +31,10 @@ const Map: React.FC = () => {
         querySnapshot.forEach((doc) => {
             const marker = doc.data() as MarkerData
             loadedMarkers.push(marker)
-        });
+        })
         setMarkers(loadedMarkers)
         console.log(markers)
-    };
+    }
 
     const onMapClick = useCallback((event: google.maps.MapMouseEvent) => {
         if (!event.latLng) return
@@ -43,29 +43,42 @@ const Map: React.FC = () => {
             lng: event.latLng.lng(),
             time: new Date()
         }
-        saveMarker(newMarker)
+        addMarker(newMarker)
         setMarkers((current) => [...current, newMarker])
     }, [])
 
-    const saveMarker = async (marker: MarkerData) => {
+    const addMarker = async (marker: MarkerData) => {
         try {
-            await firebase.firestore().collection("quests").add(marker);
+            await firebase.firestore().collection("quests").add(marker)
         } catch (e) {
-            console.error("Error adding document: ", e);
+            console.error("Error adding document: ", e)
         }
-    };
+    }
+
+    const deleteAllMarkers = async () => {
+        try {
+            const querySnapshot = await firebase.firestore().collection("quests").get()
+            querySnapshot.forEach(async (doc) => {
+                await firebase.firestore().collection("quests").doc(doc.id).delete()
+            })
+            setMarkers([])
+        } catch (e) {
+            console.error("Error deleting all documents: ", e)
+        }
+    }
 
     useEffect(() => {
         loadMarkers()
     }, [])
 
-    if (loadError) return <div>Error loading maps</div>;
-    if (!isLoaded) return <div>Loading Maps</div>;
+    if (loadError) return <div>Error loading maps</div>
+    if (!isLoaded) return <div>Loading Maps</div>
 
     console.log(markers)
 
     return (
         <div>
+            <button onClick={deleteAllMarkers}>delete all markers</button>
             <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 zoom={8}
