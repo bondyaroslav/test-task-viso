@@ -73,6 +73,27 @@ const Map: React.FC = () => {
         }
     }
 
+    const deleteTargetQuest = async (timestamp: number) => {
+        try {
+            const questRef = firebase.firestore().collection("quests")
+                .where("timestamp", "==", timestamp)
+                .limit(1)
+
+            const querySnapshot = await questRef.get()
+
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0]
+                await doc.ref.delete()
+                setQuests((currentQuests) => currentQuests.filter(q => q.timestamp !== timestamp))
+                console.log(`Quest ${timestamp} deleted successfully.`)
+            } else {
+                console.error(`No quest found with timestamp ${timestamp}.`)
+            }
+        } catch (error) {
+            console.error(`Error deleting quest ${timestamp}: `, error)
+        }
+    }
+
     const handleQuestDrag = useCallback(async (index: number, newPosition: google.maps.LatLngLiteral | null) => {
         if (!newPosition) return
         try {
@@ -125,6 +146,10 @@ const Map: React.FC = () => {
 
                     gMarker.addListener("dragend", (event: any) => {
                         handleQuestDrag(index, event.latLng.toJSON())
+                    })
+
+                    gMarker.addListener("click", () => {
+                        deleteTargetQuest(quest.timestamp)
                     })
 
                     markerClustererRef.current?.addMarker(gMarker)
