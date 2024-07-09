@@ -1,7 +1,7 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api"
-import "firebase/firestore"
+import React, { useCallback, useEffect, useRef, useState } from "react"
+import { GoogleMap, useLoadScript } from "@react-google-maps/api"
 import firebase from "firebase/compat/app"
+import "firebase/compat/firestore"
 import { MarkerClusterer } from "@googlemaps/markerclusterer"
 
 const mapContainerStyle = {
@@ -13,124 +13,149 @@ const center = {
     lng: 2.2945
 }
 
-interface MarkerData {
-    lat: number
-    lng: number
-    time: number
+interface Quest {
+    location: {
+        lat: number
+        lng: number
+    }
+    timestamp: number
+    next?: string
 }
 
 const Map: React.FC = () => {
     const { isLoaded, loadError } = useLoadScript({
-        googleMapsApiKey: "AIzaSyB6G2zZnAoeL-DOW4WcVIyslHWi2iYzjfY"
+        googleMapsApiKey: "AIzaSyBczTp_619uYy2FLeBfrQV8mDYoEZCYAIU"
     })
 
-    const [markers, setMarkers] = useState<MarkerData[]>([])
+    const [quests, setQuests] = useState<Quest[]>([])
     const mapRef = useRef<google.maps.Map | null>(null)
     const markerClustererRef = useRef<MarkerClusterer | null>(null)
 
-    const loadMarkers = async () => {
-        const querySnapshot = await firebase.firestore().collection("quests").get()
-        const loadedMarkers: MarkerData[] = []
-        querySnapshot.forEach((doc) => {
-            const marker = doc.data() as MarkerData
-            loadedMarkers.push(marker)
-        })
-        setMarkers(loadedMarkers)
-        console.log(markers)
-    }
-
-    const onMapClick = useCallback((event: google.maps.MapMouseEvent) => {
-        if (!event.latLng) return
-        const newMarker: MarkerData = {
-            lat: event.latLng.lat(),
-            lng: event.latLng.lng(),
-            time: new Date().getTime()
-        }
-        addMarker(newMarker)
-        setMarkers((current) => [...current, newMarker])
-    }, [])
-
-    const addMarker = async (marker: MarkerData) => {
-        try {
-            await firebase.firestore().collection("quests").add(marker)
-        } catch (e) {
-            console.error("Error adding document: ", e)
-        }
-    }
-
-    const deleteAllMarkers = async () => {
+    const loadQuests = useCallback(async () => {
         try {
             const querySnapshot = await firebase.firestore().collection("quests").get()
-            querySnapshot.forEach(async (doc) => {
-                await firebase.firestore().collection("quests").doc(doc.id).delete()
+            const loadedQuests: Quest[] = []
+            querySnapshot.forEach((doc) => {
+                const quest = doc.data() as Quest
+                loadedQuests.push(quest)
             })
-            setMarkers([])
-        } catch (e) {
-            console.error("Error deleting all documents: ", e)
+            setQuests(loadedQuests)
+        } catch (error) {
+            console.error("Error loading quests: ", error)
         }
-    }
+    }, [])
 
-    const handleMarkerDrag = async (index: number, newPosition: google.maps.LatLngLiteral | null) => {
-        if (!newPosition) return
-        const updatedMarkers = [...markers]
-        updatedMarkers[index] = {
-            ...updatedMarkers[index],
-            lat: newPosition.lat,
-            lng: newPosition.lng
-        }
-        setMarkers(updatedMarkers)
-
+    const addQuest = useCallback(async (newQuest: Quest) => {
         try {
-            await firebase.firestore().collection("quests").doc(updatedMarkers[index].time.toString()).update({
-                lat: newPosition.lat,
-                lng: newPosition.lng
-            })
-        } catch (e) {
-            console.error("Error updating marker position: ", e)
+            const lastQuest = quests[quests.length - 1]
+            if (lastQuest) {
+                await firebase.firestore().collection("quests").add({
+                    ...newQuest,
+                    next: lastQuest.timestamp.toString()
+                })
+            } else {
+                await firebase.firestore().collection("quests").add(newQuest)
+            }
+            setQuests((currentQuests) => [...currentQuests, newQuest])
+        } catch (error) {
+            console.error("Error adding quest: ", error)
         }
-    }
+    }, [quests])
+
+    const deleteAllQuests = useCallback(async () => {
+        try {
+            const batch = firebase.firestore().batch()
+            quests.forEach((quest) => {
+                const docRef = firebase.firestore().collection("quests").doc(quest.timestamp.toString())
+                batch.delete(docRef)
+            })
+            await batch.commit()
+            setQuests([])
+        } catch (error) {
+            console.error("Error deleting quests: ", error)
+        }
+    }, [quests])
+
+    const handleQuestDrag = useCallback(async (index: number, newPosition: google.maps.LatLngLiteral | null) => {
+        if (!newPosition) return
+        try {
+            const updatedQuests = [...quests]
+            updatedQuests[index] = {
+                ...updatedQuests[index],
+                location: {
+                    lat: newPosition.lat,
+                    lng: newPosition.lng
+                }
+            }
+            setQuests(updatedQuests)
+            await firebase.firestore().collection("quests").doc(updatedQuests[index].timestamp.toString()).update({
+                location: {
+                    lat: newPosition.lat,
+                    lng: newPosition.lng
+                }
+            })
+        } catch (error) {
+            console.error("Error updating quest location: ", error)
+        }
+    }, [quests])
 
     useEffect(() => {
-        loadMarkers()
-    }, [])
+        loadQuests()
+    }, [loadQuests])
 
     useEffect(() => {
         if (isLoaded && mapRef.current) {
             const map = mapRef.current
-
             if (markerClustererRef.current) {
                 markerClustererRef.current.clearMarkers()
             }
-
             markerClustererRef.current = new MarkerClusterer({ map, markers: [] })
-            markers.forEach(marker => {
-                const gMarker = new google.maps.Marker({
-                    position: { lat: marker.lat, lng: marker.lng },
-                    label: (markers.indexOf(marker) + 1).toString(),
-                    draggable: true
-                })
-                gMarker.addListener('dragend', (e: google.maps.MapMouseEvent) => {
-                    handleMarkerDrag(markers.indexOf(marker), e.latLng?.toJSON() || null)
-                })
-                markerClustererRef.current?.addMarker(gMarker)
+            quests.forEach((quest, index) => {
+                if (quest && quest.location && quest.location.lat && quest.location.lng) {
+                    const gMarker = new google.maps.Marker({
+                        position: { lat: quest.location.lat, lng: quest.location.lng },
+                        label: (index + 1).toString(),
+                        draggable: true,
+                        map
+                    })
+
+                    gMarker.addListener("dragend", (event: any) => {
+                        handleQuestDrag(index, event.latLng.toJSON())
+                    })
+
+                    markerClustererRef.current?.addMarker(gMarker)
+                }
             })
         }
-    }, [isLoaded, markers])
+    }, [isLoaded, quests, handleQuestDrag])
+
+    const onMapClick = useCallback(
+        (event: google.maps.MapMouseEvent) => {
+            if (!event.latLng) return
+            const newQuest: Quest = {
+                location: {
+                    lat: event.latLng.lat(),
+                    lng: event.latLng.lng()
+                },
+                timestamp: new Date().getTime()
+            }
+            addQuest(newQuest)
+        },
+        [quests, addQuest]
+    )
 
     if (loadError) return <div>Error loading maps</div>
     if (!isLoaded) return <div>Loading Maps</div>
 
-    console.log(markers)
-
     return (
         <div>
-            <button onClick={deleteAllMarkers}>delete all markers</button>
+            <button onClick={deleteAllQuests}>Delete All Quests</button>
             <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 zoom={8}
                 center={center}
                 onClick={onMapClick}
-                onLoad={map => {
+                onLoad={(map) => {
                     mapRef.current = map
                 }}
             />
