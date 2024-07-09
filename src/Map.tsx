@@ -149,7 +149,7 @@ const Map: React.FC = () => {
             }
             addQuest(newQuest)
         },
-        [quests, addQuest]
+        [addQuest]
     )
 
     if (loadError) return <div>Error loading maps</div>
