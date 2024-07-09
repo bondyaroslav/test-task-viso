@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import {GoogleMap, InfoWindow, useLoadScript} from "@react-google-maps/api"
+import {GoogleMap, useLoadScript} from "@react-google-maps/api"
 import firebase from "firebase/compat/app"
 import "firebase/compat/firestore"
 import { MarkerClusterer } from "@googlemaps/markerclusterer"
 
-const mapContainerStyle = {
-    width: "100vw",
-    height: "100vh"
-}
 const center = {
     lat: 48.8584,
     lng: 2.2945
