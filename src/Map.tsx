@@ -62,19 +62,20 @@ const Map: React.FC = () => {
         }
     }, [quests])
 
-    const deleteAllQuests = useCallback(async () => {
+    const deleteAllQuests = async () => {
         try {
+            const querySnapshot = await firebase.firestore().collection("quests").get()
             const batch = firebase.firestore().batch()
-            quests.forEach((quest) => {
-                const docRef = firebase.firestore().collection("quests").doc(quest.timestamp.toString())
-                batch.delete(docRef)
+            querySnapshot.forEach((doc) => {
+                batch.delete(doc.ref)
             })
             await batch.commit()
             setQuests([])
+            console.log("All markers deleted successfully.")
         } catch (error) {
-            console.error("Error deleting quests: ", error)
+            console.error("Error deleting markers: ", error)
         }
-    }, [quests])
+    }
 
     const handleQuestDrag = useCallback(async (index: number, newPosition: google.maps.LatLngLiteral | null) => {
         if (!newPosition) return
@@ -88,12 +89,19 @@ const Map: React.FC = () => {
                 }
             }
             setQuests(updatedQuests)
-            await firebase.firestore().collection("quests").doc(updatedQuests[index].timestamp.toString()).update({
-                location: {
-                    lat: newPosition.lat,
-                    lng: newPosition.lng
-                }
-            })
+            const questId = updatedQuests[index].timestamp.toString()
+            const questRef = firebase.firestore().collection("quests").doc(questId)
+            const doc = await questRef.get()
+            if (doc.exists) {
+                await questRef.update({
+                    location: {
+                        lat: newPosition.lat,
+                        lng: newPosition.lng
+                    }
+                })
+            } else {
+                console.error(`Document ${questId} does not exist in Firestore.`)
+            }
         } catch (error) {
             console.error("Error updating quest location: ", error)
         }
