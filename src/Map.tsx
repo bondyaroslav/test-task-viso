@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { GoogleMap, useLoadScript } from "@react-google-maps/api"
+import {GoogleMap, InfoWindow, useLoadScript} from "@react-google-maps/api"
 import firebase from "firebase/compat/app"
 import "firebase/compat/firestore"
 import { MarkerClusterer } from "@googlemaps/markerclusterer"
@@ -156,10 +156,29 @@ const Map: React.FC = () => {
     if (!isLoaded) return <div>Loading Maps</div>
 
     return (
-        <div>
-            <button onClick={deleteAllQuests}>Delete All Quests</button>
+        <div style={{
+            height: '90vh',
+            width: '80%', margin: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'}}>
+            <button
+                style={{
+                    margin: '20px',
+                    padding: '12px 24px',
+                    fontSize: '18px',
+                    backgroundColor: '#007BFF',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                }}
+                onClick={deleteAllQuests}
+            >
+                Delete All Quests
+            </button>
             <GoogleMap
-                mapContainerStyle={mapContainerStyle}
+                mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '8px' }}
                 zoom={8}
                 center={center}
                 onClick={onMapClick}
@@ -168,7 +187,7 @@ const Map: React.FC = () => {
                 }}
             />
         </div>
-    )
+    );
 }
 
 export default Map
